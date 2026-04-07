@@ -130,7 +130,7 @@ dead_zone/
 └── README.md           # This file
 ```
 
-High scores are saved automatically to `~/.dead_zone_hs.json`.
+High scores are saved automatically to `~/.dead_zone_hs.csv`.
 
 ---
 
