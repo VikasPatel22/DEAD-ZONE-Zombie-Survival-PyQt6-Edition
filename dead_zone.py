@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 DEAD ZONE — Zombie Survival Wave Defense
 PyQt6 Edition with enhanced graphics, particle systems, and gameplay
@@ -7,7 +6,7 @@ PyQt6 Edition with enhanced graphics, particle systems, and gameplay
 import sys
 import math
 import random
-import json
+import csv
 import os
 import time
 from dataclasses import dataclass, field
@@ -37,7 +36,7 @@ W_WORLD, H_WORLD = 2400, 2400
 SCREEN_W, SCREEN_H = 1280, 800
 FPS = 60
 
-HIGH_SCORE_FILE = Path.home() / ".dead_zone_hs.json"
+HIGH_SCORE_FILE = Path.home() / ".dead_zone_hs.csv"
 
 # ─── COLORS ──────────────────────────────────────────────────────────────────
 class C:
@@ -191,17 +190,55 @@ def wave_config(wave: int, spawn_mult: float):
 # ─── LOAD HIGH SCORES ────────────────────────────────────────────────────────
 def load_scores():
     try:
-        if HIGH_SCORE_FILE.exists():
-            return json.loads(HIGH_SCORE_FILE.read_text())
-    except:
-        pass
-    return {"high_score": 0, "best_wave": 0, "total_kills": 0}
+        default_scores = {"high_score": 0, "best_wave": 0, "total_kills": 0}
+        if not HIGH_SCORE_FILE.exists():
+            return default_scores
+
+        with open(HIGH_SCORE_FILE, mode='r', newline='', encoding='utf-8') as f:
+            reader = csv.reader(f)
+            header = next(reader, None) # Read header row
+            if header is None: # File is empty or has no header
+                return default_scores
+            
+            data_row = next(reader, None) # Read data row
+            if data_row is None: # Only header exists
+                return default_scores
+
+            scores = {}
+            for i, key in enumerate(header):
+                if i < len(data_row): # Ensure we don't go out of bounds
+                    try:
+                        scores[key] = int(data_row[i])
+                    except ValueError:
+                        # Handle cases where a value might not be an integer, fall back to default
+                        scores[key] = default_scores.get(key, 0)
+                else:
+                    # If a header column is missing its data, use default
+                    scores[key] = default_scores.get(key, 0)
+            
+            # Ensure all default keys are present in case the CSV is incomplete
+            for key, default_val in default_scores.items():
+                if key not in scores:
+                    scores[key] = default_val
+            
+            return scores
+
+    except (FileNotFoundError, csv.Error) as e:
+        print(f"Error loading scores from CSV: {e}")
+    except Exception as e: # Catch any other unexpected errors
+        print(f"An unexpected error occurred loading scores: {e}")
+    return {"high_score": 0, "best_wave": 0, "total_kills": 0} # Return defaults on any error
 
 def save_scores(data: dict):
     try:
-        HIGH_SCORE_FILE.write_text(json.dumps(data))
-    except:
-        pass
+        with open(HIGH_SCORE_FILE, mode='w', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            header = ["high_score", "best_wave", "total_kills"] # Explicit order for CSV
+            values = [data.get(key, 0) for key in header] # Get values, with 0 as default if key is missing
+            writer.writerow(header)
+            writer.writerow(values)
+    except Exception as e:
+        print(f"Error saving scores to CSV: {e}")
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  GAME ENGINE
